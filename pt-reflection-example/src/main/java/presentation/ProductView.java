@@ -1,11 +1,14 @@
 package presentation;
 
 import dao.ProductDAO;
+import model.Client;
 import model.Product;
+import start.ReflectionExample;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.lang.reflect.Field;
 import java.util.List;
 
 import static javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS;
@@ -98,9 +101,9 @@ public class ProductView extends JFrame {
             table.setModel(new DefaultTableModel(new Object[][]{}, new String[]{"Id", "Name", "Price", "Quantity"}));
             table.setBounds(60, 400, 650, 100);
             DefaultTableModel tableModel = (DefaultTableModel) table.getModel();
-            List<Product> plist = pdao.listAll();
+            List<Product> tableList = pdao.listAll();
 
-            for (Product p : plist) {
+            for (Product p : tableList) {
                 int id = p.getId();
                 String nume = p.getName();
                 int price = p.getPrice();
@@ -108,7 +111,39 @@ public class ProductView extends JFrame {
 
                 tableModel.addRow(new Object[]{id, nume, price, quantity});
             }
-            JScrollPane sp = new JScrollPane(table, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            //JScrollPane sp = new JScrollPane(table, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+            ReflectionExample reflectionExample = new ReflectionExample();
+            int nrCols = reflectionExample.retrieveColumnHeaders(tableList).size();
+            String[] header = new String[nrCols];
+
+            //retrieve the columns names
+            for (int i = 0; i < nrCols; i++) {
+                header[i] = reflectionExample.retrieveColumnHeaders(tableList).get(i).toString();
+            }
+            int nrRows = tableList.size(), i = 0, k = 0;
+            String[][] tuple = new String[nrRows][nrCols];
+            for (Product t : tableList) { //for each tuple
+                k = 0;
+                for (Field field : t.getClass().getDeclaredFields()) //retrieve fields
+                {
+                    field.setAccessible(true);
+                    Object value = null;
+                    try {
+                        value = field.get(t);
+                    } catch (IllegalAccessException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    tuple[i][k] = value.toString();
+                    k++;
+                }
+                i++;
+            }
+
+            JTable jTable = new JTable(tuple, header); //create a table
+            JScrollPane sp = new JScrollPane(jTable, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED); //wrap it in a ScrollPane
+
+
             p4.removeAll();
             p4.add(sp);
             table.repaint();
